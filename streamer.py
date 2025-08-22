@@ -5,12 +5,25 @@ import websockets
 import gzip
 import io
 import pandas as pd
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Dict
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-URL = "wss://open-api-swap.bingx.com/swap-market"
+@dataclass
+class Config:
+    URL: str = "wss://open-api-swap.bingx.com/swap-market"
+    SYMBOL: str = "BTC-USDT"
+    TIMEFRAME: str = "1m"
+    SUBSCRIPTION: Dict = field(init=False)
+
+    def __post_init__(self):
+        self.SUBSCRIPTION = {
+            "id": f"{self.SYMBOL}-{self.TIMEFRAME}-{datetime.now().timestamp()}",
+            "reqType": "sub",
+            "dataType": f"{self.SYMBOL}@kline_{self.TIMEFRAME}"
+        }
 
 @dataclass
 class Candle:
@@ -22,23 +35,16 @@ class Candle:
     volume: float
 
 class BingxStreamer:
-    def __init__(self, symbol: str, timeframe: str):
-        self.url = URL
-        self.symbol = symbol
-        self.timeframe = timeframe
-        self.subscription = {
-            "id": f"{symbol}-{timeframe}-{datetime.now().timestamp()}",
-            "reqType": "sub",
-            "dataType": f"{self.symbol}@kline_{self.timeframe}"
-        }
+    def __init__(self, config: Config):
+        self.config = config
         self.df = pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         self.current_candle_timestamp = None
         self.last_candle_update: Candle | None = None
 
     async def start(self):
-        async with websockets.connect(self.url) as ws:
+        async with websockets.connect(self.config.URL) as ws:
             logging.info('WebSocket connected')
-            sub_str = json.dumps(self.subscription)
+            sub_str = json.dumps(self.config.SUBSCRIPTION)
             await ws.send(sub_str)
             logging.info("Subscribed to: %s", sub_str)
 
@@ -55,7 +61,7 @@ class BingxStreamer:
 
                     data = json.loads(utf8_data)
 
-                    if data.get('dataType') == self.subscription['dataType'] and data.get('data'):
+                    if data.get('dataType') == self.config.SUBSCRIPTION['dataType'] and data.get('data'):
                         for candle_data in data['data']:
                             if all(k in candle_data for k in ('T', 'o', 'h', 'l', 'c', 'v')):
                                 candle_timestamp = pd.to_datetime(candle_data['T'], unit='ms')
@@ -109,12 +115,11 @@ class BingxStreamer:
 
 if __name__ == "__main__":
     # Example usage:
-    symbol = "BTC-USDT"
-    timeframe = "1m"  # e.g., 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d, 1w
+    config = Config(SYMBOL="BTC-USDT", TIMEFRAME="1m")
 
-    streamer = BingxStreamer(symbol=symbol, timeframe=timeframe)
+    streamer = BingxStreamer(config=config)
     try:
-        logging.info(f"Starting streamer for {symbol} with timeframe {timeframe}")
+        logging.info(f"Starting streamer for {config.SYMBOL} with timeframe {config.TIMEFRAME}")
         asyncio.run(streamer.start())
     except KeyboardInterrupt:
         logging.info("Streamer stopped by user.")
