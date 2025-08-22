@@ -67,8 +67,7 @@ class Test(object):
                             logging.info(f"3-min candle closed: Close={self.last_candle_update['close']} at {self.current_candle_timestamp}")
 
                             # Add the closed candle to the DataFrame
-                            closed_candle_df = pd.DataFrame([self.last_candle_update])
-                            self.df = pd.concat([self.df, closed_candle_df], ignore_index=True)
+                            self.df.loc[len(self.df)] = self.last_candle_update
 
                             # Start tracking the new candle
                             self.current_candle_timestamp = candle_timestamp
