@@ -11,7 +11,6 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 URL = "wss://open-api-swap.bingx.com/swap-market"
-CHANNEL = {"id": "e745cd6d-d0f6-4a70-8d5a-043e4c741b40", "reqType": "sub", "dataType": "BTC-USDT@kline_3m"}
 
 @dataclass
 class Candle:
@@ -23,9 +22,15 @@ class Candle:
     volume: float
 
 class BingxStreamer:
-    def __init__(self):
+    def __init__(self, symbol: str, timeframe: str):
         self.url = URL
-        self.subscription = CHANNEL
+        self.symbol = symbol
+        self.timeframe = timeframe
+        self.subscription = {
+            "id": f"{symbol}-{timeframe}-{datetime.now().timestamp()}",
+            "reqType": "sub",
+            "dataType": f"{self.symbol}@kline_{self.timeframe}"
+        }
         self.df = pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         self.current_candle_timestamp = None
         self.last_candle_update: Candle | None = None
@@ -50,7 +55,7 @@ class BingxStreamer:
 
                     data = json.loads(utf8_data)
 
-                    if data.get('dataType') == 'BTC-USDT@kline_3m' and data.get('data'):
+                    if data.get('dataType') == self.subscription['dataType'] and data.get('data'):
                         for candle_data in data['data']:
                             if all(k in candle_data for k in ('T', 'o', 'h', 'l', 'c', 'v')):
                                 candle_timestamp = pd.to_datetime(candle_data['T'], unit='ms')
@@ -103,8 +108,13 @@ class BingxStreamer:
 
 
 if __name__ == "__main__":
-    streamer = BingxStreamer()
+    # Example usage:
+    symbol = "BTC-USDT"
+    timeframe = "1m"  # e.g., 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d, 1w
+
+    streamer = BingxStreamer(symbol=symbol, timeframe=timeframe)
     try:
+        logging.info(f"Starting streamer for {symbol} with timeframe {timeframe}")
         asyncio.run(streamer.start())
     except KeyboardInterrupt:
         logging.info("Streamer stopped by user.")
