@@ -35,6 +35,8 @@ class Test(object):
         decompressed_data = compressed_data.read()
         utf8_data = decompressed_data.decode('utf-8')
 
+        logging.debug("Raw message received: %s", utf8_data)
+
         if utf8_data == "Ping":
            ws.send("Pong")
            return
