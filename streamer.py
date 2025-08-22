@@ -15,6 +15,8 @@ class Test(object):
         self.url = URL
         self.ws = None
         self.df = pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        self.current_candle_timestamp = None
+        self.last_candle_update = None
 
     def on_open(self, ws):
         logging.info('WebSocket connected')
@@ -42,8 +44,10 @@ class Test(object):
             if data.get('dataType') == 'BTC-USDT@kline_3m' and data.get('data'):
                 for candle in data['data']:
                     if all(k in candle for k in ('T', 'o', 'h', 'l', 'c', 'v')):
-                        new_candle = {
-                            'timestamp': pd.to_datetime(candle['T'], unit='ms'),
+
+                        candle_timestamp = pd.to_datetime(candle['T'], unit='ms')
+                        current_candle_data = {
+                            'timestamp': candle_timestamp,
                             'open': float(candle['o']),
                             'high': float(candle['h']),
                             'low': float(candle['l']),
@@ -51,10 +55,27 @@ class Test(object):
                             'volume': float(candle['v'])
                         }
 
-                        new_df = pd.DataFrame([new_candle])
-                        self.df = pd.concat([self.df, new_df], ignore_index=True)
+                        # First candle received
+                        if self.current_candle_timestamp is None:
+                            self.current_candle_timestamp = candle_timestamp
+                            self.last_candle_update = current_candle_data
+                            return
 
-                        logging.info(f"New 3-min candle close: {new_candle['close']} at {new_candle['timestamp']}")
+                        # New candle detected, so the previous one has closed
+                        if candle_timestamp > self.current_candle_timestamp:
+                            # Log the closed candle
+                            logging.info(f"3-min candle closed: Close={self.last_candle_update['close']} at {self.current_candle_timestamp}")
+
+                            # Add the closed candle to the DataFrame
+                            closed_candle_df = pd.DataFrame([self.last_candle_update])
+                            self.df = pd.concat([self.df, closed_candle_df], ignore_index=True)
+
+                            # Start tracking the new candle
+                            self.current_candle_timestamp = candle_timestamp
+
+                        # Always store the latest update for the current candle
+                        self.last_candle_update = current_candle_data
+
                     else:
                         logging.debug("Received object in kline data stream with unexpected structure: %s", candle)
             else:
