@@ -1,9 +1,11 @@
-
 import json
 import logging
 import websocket
 import gzip
 import io
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s — %(levelname)s — %(message)s")
+
 URL="wss://open-api-swap.bingx.com/swap-market" 
 CHANNEL= {"id":"e745cd6d-d0f6-4a70-8d5a-043e4c741b40","reqType": "sub","dataType":"BTC-USDT@kline_3m"}
 class Test(object):
@@ -13,30 +15,30 @@ class Test(object):
         self.ws = None
 
     def on_open(self, ws):
-        print('WebSocket connected')
+        logging.info('WebSocket connected')
         subStr = json.dumps(CHANNEL)
         ws.send(subStr)
-        print("Subscribed to :",subStr)
+        logging.info("Subscribed to: %s", subStr)
 
     def on_data(self, ws, string, type, continue_flag):
         compressed_data = gzip.GzipFile(fileobj=io.BytesIO(string), mode='rb')
         decompressed_data = compressed_data.read()
         utf8_data = decompressed_data.decode('utf-8')
-        print(utf8_data)
+        logging.debug("Received data: %s", utf8_data)
 
     def on_message(self, ws, message):
         compressed_data = gzip.GzipFile(fileobj=io.BytesIO(message), mode='rb')
         decompressed_data = compressed_data.read()
         utf8_data = decompressed_data.decode('utf-8')
-        print(utf8_data)  #this is the message you need 
+        logging.debug("Received message: %s", utf8_data)  #this is the message you need
         if utf8_data == "Ping": # this is very important , if you receive 'Ping' you need to send 'Pong' 
            ws.send("Pong")
 
     def on_error(self, ws, error):
-        print(error)
+        logging.error(error)
 
     def on_close(self, ws, close_status_code, close_msg):
-        print('The connection is closed!')
+        logging.warning('The connection is closed!')
 
     def start(self):
         self.ws = websocket.WebSocketApp(
