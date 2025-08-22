@@ -66,7 +66,12 @@ class Test(object):
                         # New candle detected, so the previous one has closed
                         if candle_timestamp > self.current_candle_timestamp:
                             # Log the closed candle
-                            logging.info(f"3-min candle closed: Close={self.last_candle_update['close']} at {self.current_candle_timestamp}")
+                            closed_candle = self.last_candle_update
+                            logging.info(
+                                f"3-min candle closed at {self.current_candle_timestamp}: "
+                                f"O={closed_candle['open']}, H={closed_candle['high']}, "
+                                f"L={closed_candle['low']}, C={closed_candle['close']}, V={closed_candle['volume']}"
+                            )
 
                             # Add the closed candle to the DataFrame
                             self.df.loc[len(self.df)] = self.last_candle_update
