@@ -39,25 +39,31 @@ class Test(object):
 
         try:
             data = json.loads(utf8_data)
-            if data.get('dataType') == 'BTC-USDT@kline_3m' and 'data' in data:
+            if data.get('dataType') == 'BTC-USDT@kline_3m' and data.get('data'):
                 for candle in data['data']:
-                    new_candle = {
-                        'timestamp': pd.to_datetime(candle['t'], unit='ms'),
-                        'open': float(candle['o']),
-                        'high': float(candle['h']),
-                        'low': float(candle['l']),
-                        'close': float(candle['c']),
-                        'volume': float(candle['v'])
-                    }
+                    if all(k in candle for k in ('t', 'o', 'h', 'l', 'c', 'v')):
+                        new_candle = {
+                            'timestamp': pd.to_datetime(candle['t'], unit='ms'),
+                            'open': float(candle['o']),
+                            'high': float(candle['h']),
+                            'low': float(candle['l']),
+                            'close': float(candle['c']),
+                            'volume': float(candle['v'])
+                        }
 
-                    new_df = pd.DataFrame([new_candle])
-                    self.df = pd.concat([self.df, new_df], ignore_index=True)
+                        new_df = pd.DataFrame([new_candle])
+                        self.df = pd.concat([self.df, new_df], ignore_index=True)
 
-                    logging.info(f"New 3-min candle close: {new_candle['close']} at {new_candle['timestamp']}")
+                        logging.info(f"New 3-min candle close: {new_candle['close']} at {new_candle['timestamp']}")
+                    else:
+                        logging.debug("Received object in kline data stream with unexpected structure: %s", candle)
             else:
-                logging.debug("Received non-kline message: %s", utf8_data)
-        except json.JSONDecodeError:
-            logging.error("Failed to decode JSON: %s", utf8_data)
+                if 'code' in data and data['code'] == 0:
+                    logging.info("Received subscription confirmation: %s", utf8_data)
+                else:
+                    logging.debug("Received non-kline message: %s", utf8_data)
+        except (json.JSONDecodeError, TypeError):
+            logging.error("Failed to process message: %s", utf8_data)
 
     def on_error(self, ws, error):
         logging.error(error)
