@@ -68,7 +68,7 @@ class Test(object):
                             # Log the closed candle
                             closed_candle = self.last_candle_update
                             logging.info(
-                                f"3-min candle closed at {self.current_candle_timestamp}: "
+                                f"Candle closed at {self.current_candle_timestamp}: "
                                 f"O={closed_candle['open']}, H={closed_candle['high']}, "
                                 f"L={closed_candle['low']}, C={closed_candle['close']}, V={closed_candle['volume']}"
                             )
