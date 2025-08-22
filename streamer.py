@@ -41,9 +41,9 @@ class Test(object):
             data = json.loads(utf8_data)
             if data.get('dataType') == 'BTC-USDT@kline_3m' and data.get('data'):
                 for candle in data['data']:
-                    if all(k in candle for k in ('t', 'o', 'h', 'l', 'c', 'v')):
+                    if all(k in candle for k in ('T', 'o', 'h', 'l', 'c', 'v')):
                         new_candle = {
-                            'timestamp': pd.to_datetime(candle['t'], unit='ms'),
+                            'timestamp': pd.to_datetime(candle['T'], unit='ms'),
                             'open': float(candle['o']),
                             'high': float(candle['h']),
                             'low': float(candle['l']),
