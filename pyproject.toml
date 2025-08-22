@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bingx-streamer"
+version = "0.1.0"
+description = "A small and extensible WebSocket client for streaming BingX candlestick data."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "websockets>=10.0",
+]
+
+[project.optional-dependencies]
+examples = ["pandas"]
+
+[project.urls]
+"Homepage" = "https://github.com/example/bingx-streamer" # Placeholder
+"Bug Tracker" = "https://github.com/example/bingx-streamer/issues" # Placeholder
