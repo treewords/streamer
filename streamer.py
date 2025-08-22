@@ -3,16 +3,18 @@ import logging
 import websocket
 import gzip
 import io
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-URL="wss://open-api-swap.bingx.com/swap-market" 
+URL="wss://open-api-swap.bingx.com/swap-market"
 CHANNEL= {"id":"e745cd6d-d0f6-4a70-8d5a-043e4c741b40","reqType": "sub","dataType":"BTC-USDT@kline_3m"}
 class Test(object):
 
     def __init__(self):
-        self.url = URL 
+        self.url = URL
         self.ws = None
+        self.df = pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
 
     def on_open(self, ws):
         logging.info('WebSocket connected')
@@ -30,9 +32,32 @@ class Test(object):
         compressed_data = gzip.GzipFile(fileobj=io.BytesIO(message), mode='rb')
         decompressed_data = compressed_data.read()
         utf8_data = decompressed_data.decode('utf-8')
-        logging.debug("Received message: %s", utf8_data)  #this is the message you need
-        if utf8_data == "Ping": # this is very important , if you receive 'Ping' you need to send 'Pong' 
+
+        if utf8_data == "Ping":
            ws.send("Pong")
+           return
+
+        try:
+            data = json.loads(utf8_data)
+            if data.get('dataType') == 'BTC-USDT@kline_3m' and 'data' in data:
+                for candle in data['data']:
+                    new_candle = {
+                        'timestamp': pd.to_datetime(candle['t'], unit='ms'),
+                        'open': float(candle['o']),
+                        'high': float(candle['h']),
+                        'low': float(candle['l']),
+                        'close': float(candle['c']),
+                        'volume': float(candle['v'])
+                    }
+
+                    new_df = pd.DataFrame([new_candle])
+                    self.df = pd.concat([self.df, new_df], ignore_index=True)
+
+                    logging.info(f"New 3-min candle close: {new_candle['close']} at {new_candle['timestamp']}")
+            else:
+                logging.debug("Received non-kline message: %s", utf8_data)
+        except json.JSONDecodeError:
+            logging.error("Failed to decode JSON: %s", utf8_data)
 
     def on_error(self, ws, error):
         logging.error(error)
