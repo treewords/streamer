@@ -24,5 +24,5 @@ dependencies = [
 examples = ["pandas"]
 
 [project.urls]
-"Homepage" = "https://github.com/example/bingx-streamer" # Placeholder
-"Bug Tracker" = "https://github.com/example/bingx-streamer/issues" # Placeholder
+"Homepage" = "https://github.com/treewords/streamer"
+"Bug Tracker" = "https://github.com/treewords/streamer/issues"
