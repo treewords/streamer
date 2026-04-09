@@ -44,6 +44,17 @@ class TestBingxStreamer(unittest.IsolatedAsyncioTestCase):
         self.log_stream.close()
         self.modules_patcher.stop()
 
+    def _setup_mock_ws(self, messages):
+        """Helper to setup mock websocket and its context manager."""
+        mock_ws = MagicMock()
+        mock_ws.send = AsyncMock()
+        mock_ws.__aiter__.return_value = messages
+
+        mock_connect_ctx = MagicMock()
+        self.mock_websockets.connect.return_value = mock_connect_ctx
+        mock_connect_ctx.__aenter__.return_value = mock_ws
+        return mock_ws
+
     async def test_start_malformed_json_logging(self):
         """Test that malformed JSON triggers the expected error log."""
 
@@ -57,16 +68,8 @@ class TestBingxStreamer(unittest.IsolatedAsyncioTestCase):
             f.write(malformed_json_bytes)
         compressed_malformed = out.getvalue()
 
-        # Create a mock websocket connection context manager
-        mock_ws = MagicMock()
-        mock_ws.send = AsyncMock()
-
-        mock_connect_ctx = MagicMock()
-        self.mock_websockets.connect.return_value = mock_connect_ctx
-        mock_connect_ctx.__aenter__.return_value = mock_ws
-
-        # Setup async iteration via return_value list (MagicMock wraps this automatically)
-        mock_ws.__aiter__.return_value = [compressed_malformed]
+        # Setup mock websocket
+        mock_ws = self._setup_mock_ws([compressed_malformed])
 
         config = self.Config()
         streamer = self.BingxStreamer(config)
@@ -86,16 +89,8 @@ class TestBingxStreamer(unittest.IsolatedAsyncioTestCase):
         # Prepare invalid GZIP data (just random bytes)
         invalid_gzip = b"random junk data"
 
-        # Create a mock websocket connection context manager
-        mock_ws = MagicMock()
-        mock_ws.send = AsyncMock()
-
-        mock_connect_ctx = MagicMock()
-        self.mock_websockets.connect.return_value = mock_connect_ctx
-        mock_connect_ctx.__aenter__.return_value = mock_ws
-
-        # Setup async iteration via return_value list
-        mock_ws.__aiter__.return_value = [invalid_gzip]
+        # Setup mock websocket
+        mock_ws = self._setup_mock_ws([invalid_gzip])
 
         config = self.Config()
         streamer = self.BingxStreamer(config)
@@ -127,15 +122,7 @@ class TestBingxStreamer(unittest.IsolatedAsyncioTestCase):
         compressed_valid = out.getvalue()
 
         # Mock setup
-        mock_ws = MagicMock()
-        mock_ws.send = AsyncMock()
-
-        mock_connect_ctx = MagicMock()
-        self.mock_websockets.connect.return_value = mock_connect_ctx
-        mock_connect_ctx.__aenter__.return_value = mock_ws
-
-        # Setup async iteration via return_value list
-        mock_ws.__aiter__.return_value = [compressed_valid]
+        mock_ws = self._setup_mock_ws([compressed_valid])
 
         config = self.Config(SYMBOL="BTC-USDT", TIMEFRAME="1m")
         streamer = self.BingxStreamer(config)
